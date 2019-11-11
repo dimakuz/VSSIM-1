@@ -1,3 +1,4 @@
+#!/bin/bash -xu
 # File: unlink_pm
 # Date: 2014. 12. 03.
 # Author: Jinsoo Yoo (jedisty@hanyang.ac.kr)

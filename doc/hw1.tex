@@ -1,0 +1,35 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage{fullpage}
+\usepackage[top=2cm, bottom=4.5cm, left=2.5cm, right=2.5cm]{geometry}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+
+
+\setlength{\parindent}{0.0in}
+\setlength{\parskip}{0.05in}
+
+\newcommand\course{SSD Structure and Security}
+\newcommand\hwnumber{1}
+\newcommand\namea{John Doe 1234567890}
+\newcommand\nameb{Dmitry Kuznetsov 322081183}
+
+\pagestyle{fancyplain}
+\headheight 35pt  
+\lhead{\namea\\\nameb}
+\chead{\textbf{\Large Problem Set \hwnumber}}
+\rhead{\course \\ \today}
+\lfoot{}
+\cfoot{}
+\rfoot{\small\thepage}
+\headsep 1.5em
+
+
+\begin{document}
+\section{Programming assignment}
+\includegraphics{results}
+\section{Dry assignment}
+\subsection{}
+B. Random access speed is the least significant factor in the given scenario assuming banks maintain elaborate backups. Backups are often written sequentially, then stored (often as cold storage). In this case, high density drives means less space is needed to store the drives and resistance to magnetic interference means drives can be replicated less often.
+\subsection{}
+C. An SSS drive is order of magnitude slower and cheaper than RAM. The described memory can fit inside the gap between RAM and SSD both performance and price-wise.
+\end{document}

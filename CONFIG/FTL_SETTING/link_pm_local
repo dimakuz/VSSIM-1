@@ -1,3 +1,4 @@
+#!/bin/bash -xu
 # File: link_pm
 # Date: 2014. 12. 03.
 # Author: Jinsoo Yoo (jedisty@hanyang.ac.kr)
