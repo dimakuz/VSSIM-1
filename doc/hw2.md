@@ -30,7 +30,7 @@ int PLANES_PER_FLASH;
 
 
 ### B ###
-The following is based on the currenly enabled code:
+The following is based on the currently enabled code:
 
 * `SSD_WRITE` calls into FTL code (`ssd.c:SSD_WRITE`)
 * Inside FTL code, the following is performed: (`ftl.c:_FTL_WRITE`)
@@ -72,7 +72,7 @@ The function `FTL_INIT()` initialize the mapping tables:
         INIT_VICTIM_BLOCK_LIST(); 
 ```
 
-`mapping_table` maps logical pages (lpn) to  pyhsical pages (ppn)
+`mapping_table` maps logical pages (lpn) to  physical pages (ppn)
 `inverse_mapping_table` maps ppn to lpn
 `block_state_table` keeps the state of each block
 `valid_array` keeps block pages state
@@ -86,14 +86,14 @@ The function `FTL_INIT()` initialize the mapping tables:
 	* `UPDATE_NEW_PAGE_MAPPING` set new ppn <-> lpn mapping for`mapping_table` and `inverse_mapping_table`, and set page state to `VALID` and block to `DATA_BLOCK`.
 	
 * Read:
-	* `GET_MAPPING_INFO` fetch current current ppn to lpn mappin, for reading.
+	* `GET_MAPPING_INFO` fetch current current ppn to lpn mapping, for reading.
 	
 * Garbage Collection:
 	* `SELECT_VICTIM_BLOCK` get block from victim blocks.
 	* `GET_NEW_PAGE` get a new page to copy victim block data into it.
 	* `GET_INVERSE_MAPPING_INFO` get the old ppn mapping.
 	* `UPDATE_NEW_PAGE_MAPPING` set new ppn <-> lpn mapping for`mapping_table` and `inverse_mapping_table`, and set page state to `VALID` and block to `DATA_BLOCK`.
-	* `UPDATE_BLOCK_STATE` after earsing old block set state to empty.
+	* `UPDATE_BLOCK_STATE` after erasing old block set state to empty.
 	* ` INSERT_EMPTY_BLOCK` add to empty block list
 	
 ### E ###
@@ -149,7 +149,7 @@ so if we change the read delay nothing will happen. we changed the configuration
 In the results we can see that doubling the `CELL_PROGRAM_DELAY` doubled the run time of the tests.
 
 ### G ###
-The best performance 
+The best performance boost will be gained by decreasing `CELL_PROGRAM_DELAY` since the original tests.c only run write commands and `CELL_PROGRAM_DELAY` is the most significant delay.
 
 |Config Name| Original Value| New Value | Run Time  |
 |---|---|---|---|
@@ -162,6 +162,7 @@ The best performance
 |CHANNEL_SWITCH_DELAY_R|16 | 8|`35.128s`|
 |CHANNEL_SWITCH_DELAY_W|33 | 17|`34.852s`|
 
+### H ###
 
 
 
