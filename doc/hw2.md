@@ -135,6 +135,35 @@ CHANNEL_SWITCH_DELAY_W      33
 	
 ### F ###
 
+The original `tests.c` only writes to the ssd, and no GC cycles are running.
+so if we change the read delay nothing will happen. we changed the configuration of `CELL_PROGRAM_DELAY` from `940` to `1880` and executed:
+
+`time ./tests`
+
+
+| CELL_PROGRAM_DELAY  | Run Time  |
+|---|---|
+| 940  |  `0m49.025s` | 
+| 1880 | `1m48.477s` |
+
+In the results we can see that doubling the `CELL_PROGRAM_DELAY` doubled the run time of the tests.
+
+### G ###
+The best performance 
+
+|Config Name| Original Value| New Value | Run Time  |
+|---|---|---|---|
+|-|-|-| `35.664s`| 
+|CELL_PROGRAM_DELAY|940 | 470|`23.730s`|
+|REG_WRITE_DELAY|82 | 41|`34.509s`|
+|CELL_READ_DELAY|140 | 70|`35.454s`|
+|SSD_REG_READ_DELAY|82 | 41|`35.831s`|
+|BLOCK_ERASE_DELAY|2000 | 1000|`35.470s`|
+|CHANNEL_SWITCH_DELAY_R|16 | 8|`35.128s`|
+|CHANNEL_SWITCH_DELAY_W|33 | 17|`34.852s`|
+
+
+
 
 	
 	
