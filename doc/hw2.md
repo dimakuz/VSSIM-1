@@ -1,6 +1,8 @@
 Homework Set 2
 ==============
 
+Code Assignment
+------
 Part 1
 ------
 
@@ -181,6 +183,24 @@ We can implement this by adding delay configuration.
 5. Flash Cell/Block/Page/Die failure and degradation:
 Flash cells have limited write capacity and can fail, should be able to set the failure rate for flash components.
 implementation ?
+
+
+
+ Dry Assignment
+------
+
+a. The throughput in the 38 second is over 500MB/s, this is strange since the benchmark results indicated that: 
+*"the maximum write throughput of the mobile storage device is 160 MB/s"*.
+
+b. Our hypothesis is that bulk writes to are waited on and the counters are only updated after the bulk write is completed. so if a large amount of data is written at once then the performance counters will update at once the data is written.
+Going over the `blk-lib.c` source we can see that all of the write functions wait for completion
+ 
+```
+	/* Wait for bios in-flight */
+	if (!atomic_dec_and_test(&bb.done))
+		wait_for_completion(&wait);
+```
+c. We think this may be caused due to a large Garbage Collection that also erase the data on the blocks, this make sense if the device sees the erase as a write operation.
 
 
 
