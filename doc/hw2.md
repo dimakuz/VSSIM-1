@@ -162,7 +162,26 @@ The best performance boost will be gained by decreasing `CELL_PROGRAM_DELAY` sin
 |CHANNEL_SWITCH_DELAY_R|16 | 8|`35.128s`|
 |CHANNEL_SWITCH_DELAY_W|33 | 17|`34.852s`|
 
+
 ### H ###
+Features that are not implemented by the simulator:
+
+1. Multi Level Cell
+2-bit cell is called Multi-level Cell, allows for more data to be stored in each cell but harder to implement.
+We can implement this by adding a Level Per Cell configuration, and adding more delay when writing data with `CELL_PROGRAM_DELAY`, and adding a delay configuration for writing different level.
+2. Over-Provisioning 
+Keeping x% of the disc for the for GC usage 
+We can implement this by limiting max lba ?
+3. FTL in host memory
+Simulate FTL on the host RAM.
+We can implement this by adding delay configuration for for all tables, described in **E**
+4. No Host interface delay
+Requests go directly to ftl
+We can implement this by adding delay configuration.
+5. Flash Cell/Block/Page/Die failure and degradation:
+Flash cells have limited write capacity and can fail, should be able to set the failure rate for flash components.
+implementation ?
+
 
 
 
