@@ -7,7 +7,7 @@ Part 1
 ### A ###
 
 Based on survey of the code, the SSD is built of the following componnents (from outermost to innermost)
-configuration is declared on CONFIG/vssim_config_manager.c, and is specified in ssd.conf
+configuration is declared on `CONFIG/vssim_config_manager.c`, and is specified in ssd.conf
 ```
 /* SSD Configuration */
 int SECTOR_SIZE;
@@ -62,7 +62,7 @@ The following is based on the currenly enabled code:
     * Cell/channel/register access times are recorded (`ssd_io_manager.c/SSD_*_RECORD`)
 
 ### D ###
-The function `FTL_INIT()` initialize these tables:
+The function `FTL_INIT()` initialize the mapping tables:
 ```
         INIT_MAPPING_TABLE();                                                                                 
         INIT_INVERSE_MAPPING_TABLE();                                                                         
@@ -75,13 +75,72 @@ The function `FTL_INIT()` initialize these tables:
 `mapping_table` maps logical pages (lpn) to  pyhsical pages (ppn)
 `inverse_mapping_table` maps ppn to lpn
 `block_state_table` keeps the state of each block
-``
+`valid_array` keeps block pages state
+`empty_block_list` keep track of empty blocks in ssd
+`victim_block_list` blocks for GC
 
-``
-
-* Write:
+* Write: 
 	* `GET_MAPPING_INFO` fetch current current ppn to lpn mapping.
-	* `UPDATE_OLD_PAGE_MAPPING` if page is not new update (unmap) the `inverse_mapping_table` lpn to -1, and set block state to `INVALID`.
-	* `UPDATE_NEW_PAGE_MAPPING` set new `mapping_table` and `inverse_mapping_table`, and set block state to `VALID`|`DATA_BLOCK`
+	* `GET_NEW_PAGE` get a new page from empty/victim  list.
+	* `UPDATE_OLD_PAGE_MAPPING` if page is not new update (unmap) the `inverse_mapping_table` lpn to -1, and set page state to `INVALID`.
+	* `UPDATE_NEW_PAGE_MAPPING` set new ppn <-> lpn mapping for`mapping_table` and `inverse_mapping_table`, and set page state to `VALID` and block to `DATA_BLOCK`.
 	
 * Read:
+	* `GET_MAPPING_INFO` fetch current current ppn to lpn mappin, for reading.
+	
+* Garbage Collection:
+	* `SELECT_VICTIM_BLOCK` get block from victim blocks.
+	* `GET_NEW_PAGE` get a new page to copy victim block data into it.
+	* `GET_INVERSE_MAPPING_INFO` get the old ppn mapping.
+	* `UPDATE_NEW_PAGE_MAPPING` set new ppn <-> lpn mapping for`mapping_table` and `inverse_mapping_table`, and set page state to `VALID` and block to `DATA_BLOCK`.
+	* `UPDATE_BLOCK_STATE` after earsing old block set state to empty.
+	* ` INSERT_EMPTY_BLOCK` add to empty block list
+	
+### E ###
+
+These are the delay values found in `CONFIG/vssim_config_manager.c`:
+```
+/* NAND Flash Delay */
+int REG_WRITE_DELAY;
+int CELL_PROGRAM_DELAY;
+int REG_READ_DELAY;
+int CELL_READ_DELAY;
+int BLOCK_ERASE_DELAY;
+int CHANNEL_SWITCH_DELAY_W;
+int CHANNEL_SWITCH_DELAY_R; 
+```
+
+And these are the values configured in `CONFIG\ssd.conf`:
+
+```
+REG_WRITE_DELAY         82
+CELL_PROGRAM_DELAY      940
+REG_READ_DELAY          82
+CELL_READ_DELAY         140
+BLOCK_ERASE_DELAY       2000
+                                  
+CHANNEL_SWITCH_DELAY_R      16
+CHANNEL_SWITCH_DELAY_W      33 
+```
+
+
+* Read delay flow:
+	* `SSD_CH_SWITCH_DELAY` - delay for switching channel if needed. 
+	defined by `CHANNEL_SWITCH_DELAY_R` configuration. delay=`16`
+	*   `SSD_CELL_READ_DELAY` - delay for reading from cell.
+	defined by `CELL_READ_DELAY` configuration. delay=`140`
+	* `SSD_REG_READ_DELAY` - delay for reading from register. 
+	defined by `REG_READ_DELAY` configuration. delay=`82`
+	
+	
+### F ###
+
+
+	
+	
+	
+
+
+
+ 
+	
