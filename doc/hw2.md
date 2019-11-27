@@ -7,16 +7,31 @@ Part 1
 ### A ###
 
 Based on survey of the code, the SSD is built of the following componnents (from outermost to innermost)
+configuration is declared on CONFIG/vssim_config_manager.c, and is specified in ssd.conf
+```
+/* SSD Configuration */
+int SECTOR_SIZE;
+int PAGE_SIZE;
 
-1. Flash chips (referenced by `FLASH_NB` - chips in drive)
-2. Planes (references by `PLANES_PER_FLASH`) - 
-3. Blocks - TODO
-4. Sectors - TODO
-5. Pages - TODO
+int64_t SECTOR_NB;
+int PAGE_NB;
+int FLASH_NB;
+int BLOCK_NB;
+int CHANNEL_NB;
+int PLANES_PER_FLASH;
+
+```
+
+1. Flash chips (referenced by `FLASH_NB` - chips in drive) - the number of flash memories in a whole SSD.
+2. Planes (references by `PLANES_PER_FLASH`) - the number of planes per flash memory.
+3. Blocks - (references by `BLOCK_NB`) - the number of blocks per flash memory.
+4. Pages - (references by ,`PAGE_NB`, `PAGE_SIZE`) - number of pages and the size of one page.
+5. Sectors - (references by `SECTOR_SIZE`) - the size of one sector. 
 
 
 ### B ###
 The following is based on the currenly enabled code:
+
 * `SSD_WRITE` calls into FTL code (`ssd.c:SSD_WRITE`)
 * Inside FTL code, the following is performed: (`ftl.c:_FTL_WRITE`)
   * IO request is allocated
@@ -45,3 +60,28 @@ The following is based on the currenly enabled code:
     * Channel and register required for access are calculated
     * Channel is enabled
     * Cell/channel/register access times are recorded (`ssd_io_manager.c/SSD_*_RECORD`)
+
+### D ###
+The function `FTL_INIT()` initialize these tables:
+```
+        INIT_MAPPING_TABLE();                                                                                 
+        INIT_INVERSE_MAPPING_TABLE();                                                                         
+        INIT_BLOCK_STATE_TABLE();                                                                             
+        INIT_VALID_ARRAY();                                                                                   
+        INIT_EMPTY_BLOCK_LIST();                                                                              
+        INIT_VICTIM_BLOCK_LIST(); 
+```
+
+`mapping_table` maps logical pages (lpn) to  pyhsical pages (ppn)
+`inverse_mapping_table` maps ppn to lpn
+`block_state_table` keeps the state of each block
+``
+
+``
+
+* Write:
+	* `GET_MAPPING_INFO` fetch current current ppn to lpn mapping.
+	* `UPDATE_OLD_PAGE_MAPPING` if page is not new update (unmap) the `inverse_mapping_table` lpn to -1, and set block state to `INVALID`.
+	* `UPDATE_NEW_PAGE_MAPPING` set new `mapping_table` and `inverse_mapping_table`, and set block state to `VALID`|`DATA_BLOCK`
+	
+* Read:
