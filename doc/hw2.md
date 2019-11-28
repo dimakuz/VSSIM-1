@@ -185,8 +185,79 @@ Flash cells have limited write capacity and can fail, should be able to set the 
 implementation ?
 
 
+Part 2
+------
+### A ###
+For this question we've reduced the size of SSD. Our test ran as following
 
- Dry Assignment
+* written to the lowest 90% percent of the drive
+* wrote number of requests equivalent to twice the size of the drive
+
+We have noticed higher latency on the random accesses (1384 usec for sequential access vs 1648 usec for random access).
+Upon closer examination of garbage collection mechanism, we see that random case does  about 38% extra writes to copy pages from victim blocks. This accounts for higher latency in regular writes.
+
+Sequential case:
+```
+Average Write Latency	1384.999 us
+Total writes	294892
+Total GC writes 0
+```
+
+Random case:
+```
+Average Write Latency	1648.044 us
+Total writes	294893
+Total GC writes 112111
+```
+
+### B ###
+From the below runs we can see there's direct correlation between lower overprovisioning and high latency / write amplification.
+
+* The high latency is caused directly by high write amplification (extra writes per actual writes).
+* Write amplification is caused by need to garbage collect blocks.
+* Garbage collection rate is correlated with number of empty blocks.
+* Overprovisioning ensures certain amount of unutized empty blocks, the higher over provisioning, the more blocks are available.
+
+Our measurements directly support the above explanaition:
+
+|  Provisioned blocks %  | Write Amplification | Latency  |
+|------------------------|---------------------|----------|
+| 0.95                   | 1.515               | 1833.535 |
+| 0.9                    | 1.380               | 1701.049 |
+| 0.85                   | 1.279               | 1397.688 |
+| 0.8                    | 1.21                | 1338.217 |
+| 0.75                   | 1.148               | 1272.378 |
+| 0.7                    | 1.105               | 1221.058 |
+| 0.65                   | 1.071               | 1151.604 |
+
+![](hw2-q2-b.png)
+
+### C ###
+In this question we've chosen to tweak the GC_VICTIM_NB parameter. This parameter specifies how many blocks garbage collector will attempt to clean each time number of empty blocks falls under a threshold.
+
+In question B, the default GC_VICTIM_NB was set to 20. In the below figures we're showing results for value of 10.
+
+The change had the following effects:
+
+* Negligibly lower write amplification
+* Somewhat higher average latency
+
+Our hypothesis behind this result is that write amplification is lower because the last occurence of garbage collection cleans less blocks (comparing absolute numbers of GC-related writes shows very only couple of blocks worth of writes). As for the latency, we think that it has to do with a lot more writes going into garbage collection. (FIXME)
+
+|  Provisioning % | Write Amplification | Latency  |
+|-----------------|---------------------|----------|
+| 0.95            | 1.511               | 2314.819 |
+| 0.9             | 1.373               | 1864.565 |
+| 0.85            | 1.274               | 1643.312 |
+| 0.8             | 1.207               | 1621.185 |
+| 0.75            | 1.147               | 1415.68  |
+| 0.7             | 1.103               | 1368.114 |
+| 0.65            | 1.07                | 1240.472 |
+
+
+![](hw2-q2-c.png)
+
+Dry Assignment
 ------
 
 a. The throughput in the 38 second is over 500MB/s, this is strange since the benchmark results indicated that: 
@@ -201,15 +272,3 @@ Going over the `blk-lib.c` source we can see that all of the write functions wai
 		wait_for_completion(&wait);
 ```
 c. We think this may be caused due to a large Garbage Collection that also erase the data on the blocks, this make sense if the device sees the erase as a write operation.
-
-
-
-
-	
-	
-	
-
-
-
- 
-	
