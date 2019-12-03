@@ -178,9 +178,7 @@ We can implement this by adding delay configuration for for all tables, describe
 Requests go directly to ftl
 We can implement this by adding delay configuration.
 5. Flash Cell/Block/Page/Die failure and degradation:
-Flash cells have limited write capacity and can fail, should be able to set the failure rate for flash components.
-implementation ?
-
+Flash cells have limited write capacity and can fail, should be able to set the failure rate for flash components. We can keep counters for each of component types we want to track degradation of. Then, based on the counters we can fail operations (either determinstically, e.g. fail after 100k writes, or stochastically, after 50k writes, 0.001% chance to fail).
 
 Part 2
 ------
@@ -239,7 +237,7 @@ The change had the following effects:
 * Negligibly lower write amplification
 * Somewhat higher average latency
 
-Our hypothesis behind this result is that write amplification is lower because the last occurence of garbage collection cleans less blocks (comparing absolute numbers of GC-related writes shows *very*? only couple of blocks worth of writes). As for the latency, we think that it has to do with a lot more writes invoking GC cycle that adds additional latency cost. (FIXME)
+Our hypothesis behind this result is that write amplification is lower because the last occurence of garbage collection cleans less blocks (comparing absolute numbers of GC-related writes shows only couple of blocks worth of writes). As for the latency, we think that it has to do with a lot more writes invoking GC cycle that adds additional latency cost.
 
 
 |  Provisioning % | Write Amplification | Latency  |
