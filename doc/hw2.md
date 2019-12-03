@@ -242,7 +242,12 @@ The change had the following effects:
 * Negligibly lower write amplification
 * Somewhat higher average latency
 
-Our hypothesis behind this result is that write amplification is lower because the last occurence of garbage collection cleans less blocks (comparing absolute numbers of GC-related writes shows very only couple of blocks worth of writes). As for the latency, we think that it has to do with a lot more writes going into garbage collection. (FIXME)
+Our hypothesis behind this result is that write amplification is lower because the last occurence of garbage collection cleans less blocks (comparing absolute numbers of GC-related writes shows *very*? only couple of blocks worth of writes). As for the latency, we think that it has to do with a lot more writes invoking GC cycle that adds additional latency cost. (FIXME)
+
+* in general I think this is correct
+* maybe we should try to use a really high value for GC_VICTIM_NB ( like 5% of blocks)
+* did we use OVP to simulate over provisioning? in that case GC_VICTIM_NB is equal to `FLASH_NB * BLOCK_NB * OVP / 100 / 2`
+* maybe we should try to set GC_THRESHOLD to a lower value, this might be simpler to explain.
 
 |  Provisioning % | Write Amplification | Latency  |
 |-----------------|---------------------|----------|
