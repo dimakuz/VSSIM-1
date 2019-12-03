@@ -171,9 +171,6 @@ Features that are not implemented by the simulator:
 1. Multi Level Cell
 2-bit cell is called Multi-level Cell, allows for more data to be stored in each cell but harder to implement.
 We can implement this by adding a Level Per Cell configuration, and adding more delay when writing data with `CELL_PROGRAM_DELAY`, and adding a delay configuration for writing different level.
-2. Over-Provisioning 
-Keeping x% of the disc for the for GC usage 
-We can implement this by limiting max lba ?
 3. FTL in host memory
 Simulate FTL on the host RAM.
 We can implement this by adding delay configuration for for all tables, described in **E**
@@ -244,10 +241,6 @@ The change had the following effects:
 
 Our hypothesis behind this result is that write amplification is lower because the last occurence of garbage collection cleans less blocks (comparing absolute numbers of GC-related writes shows *very*? only couple of blocks worth of writes). As for the latency, we think that it has to do with a lot more writes invoking GC cycle that adds additional latency cost. (FIXME)
 
-* in general I think this is correct
-* maybe we should try to use a really high value for GC_VICTIM_NB ( like 5% of blocks)
-* did we use OVP to simulate over provisioning? in that case GC_VICTIM_NB is equal to `FLASH_NB * BLOCK_NB * OVP / 100 / 2`
-* maybe we should try to set GC_THRESHOLD to a lower value, this might be simpler to explain.
 
 |  Provisioning % | Write Amplification | Latency  |
 |-----------------|---------------------|----------|
