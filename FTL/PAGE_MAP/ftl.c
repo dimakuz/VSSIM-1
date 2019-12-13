@@ -21,6 +21,12 @@ FILE* fp_ftl_r;
 int g_init = 0;
 extern double ssd_util;
 
+static int _FTL_WRITE_PAGE(
+	int32_t lba, unsigned long left_skip, unsigned long right_skip,
+	int write_page_nb, int32_t *new_ppn_ret
+);
+
+
 void FTL_INIT(void)
 {
 	if(g_init == 0){
@@ -114,6 +120,7 @@ void FTL_READ(int32_t sector_nb, unsigned int length)
 		fprintf(fp_ftl_r,"%ld\t%u\n", end_ftl_r - start_ftl_r, length);
 #endif
 }
+
 
 void FTL_WRITE(int32_t sector_nb, unsigned int length)
 {
@@ -283,9 +290,7 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length)
 	}
 
 	int32_t lba = sector_nb;
-	int32_t lpn;
 	int32_t new_ppn;
-	int32_t old_ppn;
 
 	unsigned int remain = length;
 	unsigned int left_skip = sector_nb % SECTORS_PER_PAGE;
@@ -309,43 +314,9 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length)
 #ifdef FIRM_IO_BUFFER
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
+		ret = _FTL_WRITE_PAGE(lba, left_skip, right_skip, write_page_nb, &new_ppn);
 
-#ifdef WRITE_NOPARAL
-		ret = GET_NEW_PAGE(VICTIM_NOPARAL, empty_block_table_index, &new_ppn);
-#else
-		ret = GET_NEW_PAGE(VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
-#endif
-		if(ret == FAIL){
-			printf("ERROR[%s] Get new page fail \n", __FUNCTION__);
-			return FAIL;
-		}
-
-		lpn = lba / (int32_t)SECTORS_PER_PAGE;
-		old_ppn = GET_MAPPING_INFO(lpn);
-
-		if((left_skip || right_skip) && (old_ppn != -1)){
-			ret = SSD_PAGE_PARTIAL_WRITE(
-				CALC_FLASH(old_ppn), CALC_BLOCK(old_ppn), CALC_PAGE(old_ppn),
-				CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn), CALC_PAGE(new_ppn),
-				write_page_nb, WRITE, io_page_nb);
-		}
-		else{
-			ret = SSD_PAGE_WRITE(CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn), CALC_PAGE(new_ppn), write_page_nb, WRITE, io_page_nb);
-		}
-		
 		write_page_nb++;
-
-		UPDATE_OLD_PAGE_MAPPING(lpn);
-		UPDATE_NEW_PAGE_MAPPING(lpn, new_ppn);
-
-#ifdef FTL_DEBUG
-                if(ret == SUCCESS){
-                        printf("\twrite complete [%d, %d, %d]\n",CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn),CALC_PAGE(new_ppn));
-                }
-                else if(ret == FAIL){
-                        printf("ERROR[%s] %d page write fail \n",__FUNCTION__, new_ppn);
-                }
-#endif
 		lba += write_sects;
 		remain -= write_sects;
 		left_skip = 0;
@@ -371,6 +342,55 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length)
 
 #ifdef FTL_DEBUG
 	printf("[%s] End\n", __FUNCTION__);
+#endif
+	return ret;
+}
+
+static int _FTL_WRITE_PAGE(
+	int32_t lba, unsigned long left_skip, unsigned long right_skip,
+	int write_page_nb, int32_t *new_ppn_ret
+) {
+	int ret;
+	int32_t lpn;
+	int32_t new_ppn;
+	int32_t old_ppn;
+	int io_page_nb;
+
+#ifdef WRITE_NOPARAL
+		ret = GET_NEW_PAGE(VICTIM_NOPARAL, empty_block_table_index, &new_ppn);
+#else
+		ret = GET_NEW_PAGE(VICTIM_OVERALL, EMPTY_TABLE_ENTRY_NB, &new_ppn);
+#endif
+
+	if(ret == FAIL){
+		printf("ERROR[%s] Get new page fail \n", __FUNCTION__);
+		return FAIL;
+	}
+
+	lpn = lba / (int32_t)SECTORS_PER_PAGE;
+	old_ppn = GET_MAPPING_INFO(lpn);
+
+	if((left_skip || right_skip) && (old_ppn != -1)){
+		ret = SSD_PAGE_PARTIAL_WRITE(
+			CALC_FLASH(old_ppn), CALC_BLOCK(old_ppn), CALC_PAGE(old_ppn),
+			CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn), CALC_PAGE(new_ppn),
+			write_page_nb, WRITE, io_page_nb);
+	}
+	else{
+		ret = SSD_PAGE_WRITE(CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn), CALC_PAGE(new_ppn), write_page_nb, WRITE, io_page_nb);
+	}
+
+	UPDATE_OLD_PAGE_MAPPING(lpn);
+	UPDATE_NEW_PAGE_MAPPING(lpn, new_ppn);
+	*new_ppn_ret = new_ppn;
+
+#ifdef FTL_DEBUG
+	if(ret == SUCCESS){
+			printf("\twrite complete [%d, %d, %d]\n",CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn),CALC_PAGE(new_ppn));
+	}
+	else if(ret == FAIL){
+			printf("ERROR[%s] %d page write fail \n",__FUNCTION__, new_ppn);
+	}
 #endif
 	return ret;
 }
