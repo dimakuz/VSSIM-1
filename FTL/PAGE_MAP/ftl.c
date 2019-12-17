@@ -27,7 +27,7 @@ static int _FTL_WRITE_PAGE(
 	int write_page_nb, int32_t *new_ppn_ret, int io_page_nb
 );
 
-static int cache_enable = 1;
+int cache_enable = 1;
 struct compressed_cache_entry {
 	int32_t lba;
 	size_t size;
