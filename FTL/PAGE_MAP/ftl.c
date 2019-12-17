@@ -34,7 +34,7 @@ struct compressed_cache_entry {
 };
 
 #define _CACHE_CAPACITY 4096
-#define _CACHE_ENTRIES 512
+#define _CACHE_ENTRIES 16
 struct compressed_cache {
 	size_t capacity;
 	size_t used;
