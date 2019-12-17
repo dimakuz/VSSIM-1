@@ -51,8 +51,6 @@ int test_reread(size_t pages)
 	return 0;
 }
 
-extern double total_write_count;
-extern double total_read_count;
 extern int cache_enable;
 int main(int argc, char *argv[]){
 	int setup = 1;
