@@ -21,6 +21,7 @@ FILE* fp_ftl_r;
 int g_init = 0;
 extern double ssd_util;
 
+int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length);
 static int _FTL_WRITE_PAGE(
 	int32_t lba, unsigned long left_skip, unsigned long right_skip,
 	int write_page_nb, int32_t *new_ppn_ret, int io_page_nb
@@ -93,14 +94,15 @@ static int compressed_cache_write(int32_t lba, size_t size) {
 	return SUCCESS;
 }
 
-static int compressed_cache_flush(int32_t *last_ppn, int write_page_nb, int io_page_nb) {
+static int compressed_cache_flush() {
 	int written = 0;
 	int ret;
 	for (ssize_t i = cache.elements - 1; i >= 0; i--) {
 		int32_t entry_lba = cache.entries[i].lba;
 		if (entry_lba == -1)
 			continue;
-		ret = _FTL_WRITE_PAGE(entry_lba, 0, 0, write_page_nb + written, last_ppn, io_page_nb);
+		//ret = _FTL_WRITE_PAGE(entry_lba, 0, 0, write_page_nb + written, last_ppn, io_page_nb);
+		ret = _FTL_WRITE_REAL(entry_lba, SECTORS_PER_PAGE);
 		if (ret == FAIL)
 			return ret;
 
@@ -109,7 +111,7 @@ static int compressed_cache_flush(int32_t *last_ppn, int write_page_nb, int io_p
 		cache.elements--;
 		written++;
 	}
-	return written;
+	return SUCCESS;
 }
 
 void FTL_INIT(void)
@@ -359,7 +361,55 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 	return ret;
 }
 
-int _FTL_WRITE(int32_t sector_nb, unsigned int length)
+int _FTL_WRITE(int32_t sector_nb, unsigned int length){
+	if(sector_nb + length > SECTOR_NB){
+		printf("ERROR[%s] Exceed Sector number\n", __FUNCTION__);
+                return FAIL;
+    }
+
+	unsigned int remain = length;
+	unsigned int left_skip = sector_nb % SECTORS_PER_PAGE;
+	unsigned int right_skip;
+	unsigned int write_sects;
+
+	unsigned int ret = FAIL;
+	int write_page_nb=0;
+	int32_t lba = sector_nb;
+
+	while(remain > 0){
+		double compr_factor = (double) rand() / (double) RAND_MAX;
+		size_t compr_size =  (size_t) PAGE_SIZE * compr_factor;
+		
+		if(remain > SECTORS_PER_PAGE - left_skip){
+			right_skip = 0;
+		}
+		else{
+			right_skip = SECTORS_PER_PAGE - left_skip - remain;
+		}
+
+		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
+
+
+		ret = compressed_cache_write(lba, compr_size);
+		if (ret == FAIL) {
+
+			printf("ERROR[%s] flushing cache\n", __FUNCTION__);
+			compressed_cache_flush();
+			ret = compressed_cache_write(lba, compr_size);
+		}
+
+		lba += write_sects;
+		remain -= write_sects;
+		left_skip = 0;
+
+	}
+
+	return ret;
+
+		
+}
+
+int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 {
 #ifdef FTL_DEBUG
 	printf("[%s] Start\n", __FUNCTION__);
@@ -379,8 +429,8 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length)
 		size_t effective_len = length;
 
 		// We might have to empty the cache (but this access will succeed)
-		if (cache_enable)
-			effective_len = SECTORS_PER_PAGE * cache.elements;
+		//if (cache_enable)
+		//	effective_len = SECTORS_PER_PAGE * cache.elements;
 		io_alloc_overhead = ALLOC_IO_REQUEST(sector_nb, effective_len, WRITE, &io_page_nb);
 		printf("io_page_nb %d %d \n", io_page_nb, cache.elements);
 	}
@@ -397,9 +447,9 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length)
 	int write_page_nb=0;
 
 	while(remain > 0){
-		double compr_factor = (double) rand() / (double) RAND_MAX;
+		/*double compr_factor = (double) rand() / (double) RAND_MAX;
 		size_t compr_size =  (size_t) PAGE_SIZE * compr_factor;
-		
+		*/
 		if(remain > SECTORS_PER_PAGE - left_skip){
 			right_skip = 0;
 		}
@@ -412,7 +462,7 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length)
 #ifdef FIRM_IO_BUFFER
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
-		if (cache_enable) {
+/*		if (cache_enable) {
 			ret = compressed_cache_write(lba, compr_size);
 			if (ret == FAIL) {
 				write_page_nb += compressed_cache_flush(&new_ppn, write_page_nb, io_page_nb);
@@ -421,7 +471,8 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length)
 		} else {
 			ret = _FTL_WRITE_PAGE(lba, left_skip, right_skip, write_page_nb, &new_ppn, io_page_nb);
 		}
-		
+*/		
+		ret = _FTL_WRITE_PAGE(lba, left_skip, right_skip, write_page_nb, &new_ppn, io_page_nb);
 		write_page_nb++;
 		lba += write_sects;
 		remain -= write_sects;
