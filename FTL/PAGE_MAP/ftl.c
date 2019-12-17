@@ -33,7 +33,7 @@ struct compressed_cache_entry {
 	size_t size;
 };
 
-#define _CACHE_CAPACITY 8192
+#define _CACHE_CAPACITY 4096
 #define _CACHE_ENTRIES 512
 struct compressed_cache {
 	size_t capacity;
@@ -319,9 +319,7 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 			printf("ERROR[%s] No Mapping info\n", __FUNCTION__);
 #endif
 		}
-
-		ret = compressed_cache_read(lba);
-		if (ret == FAIL)
+		if (!cache_enable || compressed_cache_read(lba) == FAIL)
 			ret = SSD_PAGE_READ(CALC_FLASH(ppn), CALC_BLOCK(ppn), CALC_PAGE(ppn), read_page_nb, READ, io_page_nb);
 
 #ifdef FTL_DEBUG
@@ -428,7 +426,6 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
         }
 	else{
 		io_alloc_overhead = ALLOC_IO_REQUEST(sector_nb, length, WRITE, &io_page_nb);
-		//printf("io_page_nb %d %d \n", io_page_nb, cache.elements);
 	}
 
 	int32_t lba = sector_nb;
