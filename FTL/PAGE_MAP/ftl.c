@@ -95,13 +95,11 @@ static int compressed_cache_write(int32_t lba, size_t size) {
 }
 
 static int compressed_cache_flush() {
-	int written = 0;
 	int ret;
 	for (ssize_t i = cache.elements - 1; i >= 0; i--) {
 		int32_t entry_lba = cache.entries[i].lba;
 		if (entry_lba == -1)
 			continue;
-		//ret = _FTL_WRITE_PAGE(entry_lba, 0, 0, write_page_nb + written, last_ppn, io_page_nb);
 		ret = _FTL_WRITE_REAL(entry_lba, SECTORS_PER_PAGE);
 		if (ret == FAIL)
 			return ret;
@@ -109,7 +107,6 @@ static int compressed_cache_flush() {
 		cache.used -= cache.entries[i].size;
 		cache.entries[i].lba = -1;
 		cache.elements--;
-		written++;
 	}
 	return SUCCESS;
 }
@@ -263,6 +260,7 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 	int read_page_nb = 0;
 	int io_page_nb;
 
+
 #ifdef FIRM_IO_BUFFER
 	INCREASE_RB_FTL_POINTER(length);
 #endif
@@ -322,7 +320,7 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 #endif
 		}
 
-		ret = FAIL; //compressed_cache_read(lba);
+		ret = compressed_cache_read(lba);
 		if (ret == FAIL)
 			ret = SSD_PAGE_READ(CALC_FLASH(ppn), CALC_BLOCK(ppn), CALC_PAGE(ppn), read_page_nb, READ, io_page_nb);
 
@@ -362,6 +360,11 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 }
 
 int _FTL_WRITE(int32_t sector_nb, unsigned int length){
+
+	if(!cache_enable){
+		return _FTL_WRITE_REAL(sector_nb, length);
+	}
+
 	if(sector_nb + length > SECTOR_NB){
 		printf("ERROR[%s] Exceed Sector number\n", __FUNCTION__);
                 return FAIL;
@@ -389,11 +392,10 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
 
-
 		ret = compressed_cache_write(lba, compr_size);
 		if (ret == FAIL) {
 
-			printf("ERROR[%s] flushing cache\n", __FUNCTION__);
+			//printf("ERROR[%s] flushing cache\n", __FUNCTION__);
 			compressed_cache_flush();
 			ret = compressed_cache_write(lba, compr_size);
 		}
@@ -406,7 +408,6 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 
 	return ret;
 
-		
 }
 
 int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
@@ -426,13 +427,8 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
                 return FAIL;
         }
 	else{
-		size_t effective_len = length;
-
-		// We might have to empty the cache (but this access will succeed)
-		//if (cache_enable)
-		//	effective_len = SECTORS_PER_PAGE * cache.elements;
-		io_alloc_overhead = ALLOC_IO_REQUEST(sector_nb, effective_len, WRITE, &io_page_nb);
-		printf("io_page_nb %d %d \n", io_page_nb, cache.elements);
+		io_alloc_overhead = ALLOC_IO_REQUEST(sector_nb, length, WRITE, &io_page_nb);
+		//printf("io_page_nb %d %d \n", io_page_nb, cache.elements);
 	}
 
 	int32_t lba = sector_nb;
@@ -447,9 +443,7 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 	int write_page_nb=0;
 
 	while(remain > 0){
-		/*double compr_factor = (double) rand() / (double) RAND_MAX;
-		size_t compr_size =  (size_t) PAGE_SIZE * compr_factor;
-		*/
+
 		if(remain > SECTORS_PER_PAGE - left_skip){
 			right_skip = 0;
 		}
@@ -462,16 +456,7 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 #ifdef FIRM_IO_BUFFER
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
-/*		if (cache_enable) {
-			ret = compressed_cache_write(lba, compr_size);
-			if (ret == FAIL) {
-				write_page_nb += compressed_cache_flush(&new_ppn, write_page_nb, io_page_nb);
-				ret = compressed_cache_write(lba, compr_size);
-			}
-		} else {
-			ret = _FTL_WRITE_PAGE(lba, left_skip, right_skip, write_page_nb, &new_ppn, io_page_nb);
-		}
-*/		
+		
 		ret = _FTL_WRITE_PAGE(lba, left_skip, right_skip, write_page_nb, &new_ppn, io_page_nb);
 		write_page_nb++;
 		lba += write_sects;

@@ -47,8 +47,8 @@ int test_reread()
 
 		lba = rand() % PAGE_NB;
 		SSD_WRITE(SECTORS_PER_PAGE*2, lba * SECTORS_PER_PAGE);
-		// SSD_READ(SECTORS_PER_PAGE, lba);
-		// SSD_READ(SECTORS_PER_PAGE, lba);
+		SSD_READ(SECTORS_PER_PAGE, lba);
+		SSD_READ(SECTORS_PER_PAGE, lba);
 	}
 	return 0;
 }
