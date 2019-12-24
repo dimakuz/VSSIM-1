@@ -28,7 +28,7 @@ Writes will go to the cache as implemented in the assignment. When buffer flush 
     
 
 #### Reads
-* Reading a page:
+Reading a page:
   1. If the page is in the cache, return from cache
   2. will utilize the offset in the `offset` and `size` stored
   in the mapping to find and de-compress the page.
