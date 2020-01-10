@@ -80,3 +80,20 @@ Another, more efficient (yet more complex) way is to implement intra-SSD encrypt
 When page is written, a key is enrolled, stored, and page is encryped prior to writing to flash. When page is read, the key is retrieved, and page is decrypted.
 
 Because our pages are compressed and of variable size, we can use a stream cipher and receive a more-or-less similarly sized ciphertext. One simple implementation for such cipher would be XORing with LFSR output, where key serves as initialization of the LFSR.
+
+### g
+
+In order to recover the data from our proposed drive, the following steps should be taken:
+
+* Page mapping should be reconstructed, by reading the blocks dedicated to holding the mapping tables. (Inverse mappings are not required as we're not going to move pages).
+
+* (If we implement per-page encryption) we'll need to read the encryption keys of the pages.
+
+To read a specific page:
+
+* Take the LBA of the page, and with the recovered mapping table retrieve `(PBA, offset, len)` of the page.
+* Read `len` bytes from `PBA` at offset `offset`.
+* Decrypt the page using key from recovered key table at `LBA` index.
+* Decompress the decrypted key.
+
+The page's data is now available.
