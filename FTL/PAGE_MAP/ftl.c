@@ -42,6 +42,18 @@ struct compressed_cache {
 	struct compressed_cache_entry entries[_CACHE_ENTRIES];
 };
 
+
+int controlled_compr_en = 0;
+double controlled_compr_factor = 0.0;
+
+static double get_compr_factor() {
+	if (controlled_compr_en) {
+		return controlled_compr_factor;
+	} else {
+		return (double) rand() / (double) RAND_MAX;
+	}
+}
+
 static struct compressed_cache cache;
 
 static void compressed_cache_reset() {
@@ -378,7 +390,7 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 	int32_t lba = sector_nb;
 
 	while(remain > 0){
-		double compr_factor = (double) rand() / (double) RAND_MAX;
+		double compr_factor = get_compr_factor();
 		size_t compr_size =  (size_t) PAGE_SIZE * compr_factor;
 		
 		if(remain > SECTORS_PER_PAGE - left_skip){

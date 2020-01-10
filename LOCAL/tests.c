@@ -52,6 +52,10 @@ int test_reread(size_t pages)
 }
 
 extern int cache_enable;
+
+extern int controlled_compr_en;
+extern double controlled_compr_factor;
+
 int main(int argc, char *argv[]){
 	int setup = 1;
 	size_t pages;
@@ -68,6 +72,9 @@ int main(int argc, char *argv[]){
 		pages = 1;
 	}
 
-	RUN_TEST(setup, test_reread(pages));
+	controlled_compr_en = 1;
+	controlled_compr_factor = 0.5;
+
+	RUN_TEST(setup, test_access());
 	return 0;
 }
