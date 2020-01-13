@@ -17,6 +17,7 @@
 CDEFS += -DLOCAL
 CDEFS += -DVSSIM_BENCH
 #CDEFS += -DFTL_DEBUG
+CDEFS += -DPERF_DEBUG4
 
 # List C source files here. (C dependencies are automatically generated.)
 # use file-extension c for "c-only"-files

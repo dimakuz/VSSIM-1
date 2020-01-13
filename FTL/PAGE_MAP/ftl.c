@@ -433,7 +433,7 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 	int io_page_nb;
 
 	if(sector_nb + length > SECTOR_NB){
-		printf("ERROR[%s] Exceed Sector number\n", __FUNCTION__);
+		printf("ERROR[%s] Exceed Sector number: %d, %lu\n", __FUNCTION__, sector_nb, length);
                 return FAIL;
         }
 	else{

@@ -189,6 +189,9 @@ void TERM_PERF_CHECKER(void){
 
 	printf("Average Read Latency	%.3lf us\n", avg_read_latency);
 	printf("Average Write Latency	%.3lf us\n", avg_write_latency);
+	printf("Total writes    %lf\n", total_write_count);
+	printf("Total GC writes %lf\n", total_gc_write_count);
+	printf("Write amplification %.3lf\n", (total_write_count+total_gc_write_count)/total_write_count);
 
 #ifdef PERF_DEBUG1
 	fclose(fp_perf1_w);
