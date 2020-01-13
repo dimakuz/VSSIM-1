@@ -17,6 +17,7 @@ int test_access()
 	int ret, i, lba;
 
 	// write entire device 
+	printf("total sectors: %lu sectors per page: %u\n", SECTOR_NB, SECTORS_PER_PAGE);
 	for(i=0;i<SECTOR_NB;i+=SECTORS_PER_PAGE){
 		if ((i/SECTORS_PER_PAGE) % 1024*10==0){
 			LOG("wrote %.3lf of device", (double)i  / (double)SECTOR_NB);
@@ -65,16 +66,21 @@ int main(int argc, char *argv[]){
 	} else {
 		cache_enable = 1;
 	}
-
 	if (argc >= 3) {
+		controlled_compr_factor = strtod(argv[2], NULL);
+		controlled_compr_en = 1;
+	} else {
+		controlled_compr_en = 0;
+		controlled_compr_factor = 0.0;
+	}
+	if (argc >= 4) {
 		pages = strtol(argv[2], NULL, 10);
 	} else {
 		pages = 1;
 	}
 
-	controlled_compr_en = 1;
-	controlled_compr_factor = 0.5;
-
+	printf("running test with cache=%u,fixed alpha?=%u alpha=%f, pages=%lu\n",
+		   	cache_enable, controlled_compr_en, controlled_compr_factor, pages);
 	RUN_TEST(setup, test_access());
 	return 0;
 }

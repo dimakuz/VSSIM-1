@@ -34,7 +34,7 @@ struct compressed_cache_entry {
 };
 
 #define _CACHE_CAPACITY 4096
-#define _CACHE_ENTRIES 16
+#define _CACHE_ENTRIES 128
 struct compressed_cache {
 	size_t capacity;
 	size_t used;
@@ -102,6 +102,9 @@ static int compressed_cache_write(int32_t lba, size_t size) {
 	cache.elements++;
 	cache.entries[next_vacant].lba = lba;
 	cache.entries[next_vacant].size = size;
+	if(lba + SECTORS_PER_PAGE > SECTOR_NB){
+			printf("ERROR[%s] Exceed Sector number, %u, %u\n", __FUNCTION__, lba, SECTORS_PER_PAGE);	
+	}
 
 	return SUCCESS;
 }
@@ -112,6 +115,9 @@ static int compressed_cache_flush() {
 		int32_t entry_lba = cache.entries[i].lba;
 		if (entry_lba == -1)
 			continue;
+		if(entry_lba + SECTORS_PER_PAGE > SECTOR_NB){
+			printf("ERROR[%s] Exceed Sector number\n", __FUNCTION__);	
+		}
 		ret = _FTL_WRITE_REAL(entry_lba, SECTORS_PER_PAGE);
 		if (ret == FAIL)
 			return ret;
@@ -402,6 +408,7 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 
 		write_sects = SECTORS_PER_PAGE - left_skip - right_skip;
 
+		
 		ret = compressed_cache_write(lba, compr_size);
 		if (ret == FAIL) {
 
@@ -412,8 +419,11 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 
 		lba += write_sects;
 		remain -= write_sects;
+		if(remain > 0 && lba + SECTORS_PER_PAGE > SECTOR_NB){
+            printf("ERROR[%s] Exceed Sector number, %u, %u, %u, %u, %u, %u, %u\n",
+				   	__FUNCTION__, lba, SECTORS_PER_PAGE, sector_nb, length, write_sects, left_skip, right_skip);
+		}
 		left_skip = 0;
-
 	}
 
 	return ret;
@@ -433,7 +443,7 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 	int io_page_nb;
 
 	if(sector_nb + length > SECTOR_NB){
-		printf("ERROR[%s] Exceed Sector number: %d, %lu\n", __FUNCTION__, sector_nb, length);
+		printf("ERROR[%s] Exceed Sector number: %d, %u\n", __FUNCTION__, sector_nb, length);
                 return FAIL;
         }
 	else{
