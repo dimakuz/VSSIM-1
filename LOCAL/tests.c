@@ -26,8 +26,9 @@ int test_access()
 		}
 
 		lba = rand() % SECTOR_NB;
+		lba = i % (SECTOR_NB - SECTORS_PER_PAGE);
 		SSD_WRITE(SECTORS_PER_PAGE, lba);
-		written += SECTORS_PER_PAGE;
+		written += 1;
 	}
 
 	printf("wrote seq %lx\n", written);
