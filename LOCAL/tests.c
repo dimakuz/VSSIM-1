@@ -20,7 +20,7 @@ int test_access()
 
 	// write entire device 
 	printf("total sectors: %lu sectors per page: %u\n", SECTOR_NB, SECTORS_PER_PAGE);
-	for(i=0;i<SECTOR_NB;i+=SECTORS_PER_PAGE){
+	for(i=0;i<SECTOR_NB*5;i+=SECTORS_PER_PAGE){
 		if ((i/SECTORS_PER_PAGE) % 1024*10==0){
 			LOG("wrote %.3lf of device", (double)i  / (double)SECTOR_NB);
 		}
@@ -32,7 +32,7 @@ int test_access()
 		written += 1;
 	}
 
-	printf("wrote seq %lx\n", written);
+	printf("wrote seq %ld\n", written);
 	printf("Actual write amplification %.3lf\n", (total_write_count+total_gc_write_count)/(double)written);
 	return 0;
 }

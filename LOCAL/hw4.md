@@ -6,6 +6,43 @@ Dry assignment / Intra-SSD Compression
 
 ### a
 
+In this question we chose the following workload: we performed random page-aligned writes writing a total of 5 times the logical capacity of the drive.
+
+We measured compression ratio $\alpha$ of 5% to 60% in 5% increments, for $OVP$ values of 10% and 80%. The results are presented below:
+
+![](plot_a.png)
+
+| $\alpha$ | WA OVP=10 | WA OVP=80 | Pages in Cache |
+|----------|----------:|----------:|---------------:|
+| 0.05     |    0.223  |  0.217    | 20             |
+| 0.10     |    0.452  |  0.444    | 10             |
+| 0.15     |    0.753  |  0.744    | 6              |
+| 0.20     |    0.898  |  0.900    | 5              |
+| 0.25     |    1.126  |  1.123    | 4              |
+| 0.30     |    1.497  |  1.501    | 3              |
+| 0.35     |    2.358  |  2.294    | 2              |
+| 0.40     |    2.382  |  2.294    | 2              |
+| 0.45     |    2.383  |  2.302    | 2              |
+| 0.50     |    2.386  |  2.309    | 2              |
+| 0.55     |    T/O    |  7.850    | 1              |
+| 0.60     |    T/O    |  7.805    | 1              |
+
+
+We can see two key points in the above data:
+
+#. For both $OVP$ values, WA is inversely related to number of pages we can fit in the cache. (e.g. for $\alpha$ of 35% and 40% WA is the same, as same amount of pages can fit in the cache, yet we can see difference between 30% and 35%).
+#. Both $OVP$ values behave the same, while workload writes less than physical volume of the SSD. Below is a brief sketch.
+
+We'll denote
+
+* physical volume of device $PV$
+* logical volumes as $LV=PV\cdot 100 / (100 + OVP)=PV/f$.
+* logcal volume written as $LW=5\cdot LV=5/f \cdot PV$.
+* physical volume written  as $PW = \alpha\cdot LW = 5\alpha / f \cdot PV$.
+
+From above we can see that *both* $OVP=10$ and $OVP$ write less than $PV$ for $\alpha \le 0.22$ and we indeed see that for those values WA is very similar. In fact due to randomness of the workload we can see almost similar performance up to $\alpha=0.30$.
+
+For $0.35 \le \alpha \le 0.50$ we see slightly smaller WA on $OVP=80$, possibly due to bigger number of spare blocks.
 
 ### b
 
@@ -34,7 +71,7 @@ Invalid pages marked by X
 
 ```
 
-We suggest to revise the garbage collection policy to prefer blocks where the sum of compressed sized of all valid pages is maximal. This way each eviction has to deal with less data and target block will have the most vacant space.
+We suggest to revise the garbage collection policy to prefer blocks where the sum of compressed sized of all valid pages is minimal. This way each eviction has to deal with less data and target block will have the most vacant space.
 
 ### d
 
@@ -42,7 +79,7 @@ Copyback command allows copy of data between 2 storage locations, without passin
 
 Garbage collection requires copying data between blocks. Copyback speeds up this process because actual copying is off-loaded to the chips.
 
-If compression mechanism is enabled, we might not be able to use copyback for all of our IO operations. In the no-compression case, we copy pages between block, and those pages are aligned to block boundaries. Once we enable compression, pages are no longer aligned. Copyback will be useful only in very specific cases where whole page is copies as is. E.g.:
+If compression mechanism is enabled, we might not be able to use copyback for all of our IO operations. In the no-compression case, we copy pages between blocks, and those pages are aligned to block boundaries. Once we enable compression, pages are no longer aligned. Copyback will be useful only in very specific cases where whole page is copied as is. E.g.:
 
 ```
 Victim block
@@ -53,7 +90,9 @@ Victim block
 |    |       |     |          |    |      |     |
 +----+-------+-----+---------------+------+-----+
 #   #   #   #   #   #   #   # | #   #   #   # 
-| Copyback range    | +-------+
+                              |
+| Copyback range    | +-------+ Regular copy
+                      |   
 #   #   #   #   #   # | #   #   #   #   #   #
 +----+-------+-----+--v-+-----------------------+
 |    |       |     |    |                       |
