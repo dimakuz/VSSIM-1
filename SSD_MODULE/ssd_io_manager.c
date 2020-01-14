@@ -135,6 +135,8 @@ int SSD_PAGE_WRITE(unsigned int flash_nb, unsigned int block_nb, unsigned int pa
 		SSD_REMAIN_IO_DELAY(reg);
 	}
 #endif
+	if (type == GC_WRITE)
+    	SEND_TO_PERF_CHECKER(type, 0, REG_OP);
 
 //	printf("WRITE reg %d\tch %d\toff %d\n", reg, channel, offset);
 //	SSD_PRINT_STAMP();
