@@ -21,10 +21,10 @@ FILE* fp_ftl_r;
 int g_init = 0;
 extern double ssd_util;
 
-int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length);
+int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length, int cache_flush);
 static int _FTL_WRITE_PAGE(
 	int32_t lba, unsigned long left_skip, unsigned long right_skip,
-	int write_page_nb, int32_t *new_ppn_ret, int io_page_nb
+	int write_page_nb, int32_t *new_ppn_ret, int io_page_nb, int cache_flush
 );
 
 int cache_enable = 1;
@@ -103,30 +103,18 @@ static int compressed_cache_write(int32_t lba, size_t size) {
 	cache.entries[next_vacant].lba = lba;
 	cache.entries[next_vacant].size = size;
 	if(lba + SECTORS_PER_PAGE > SECTOR_NB){
-			printf("ERROR[%s] Exceed Sector number, %u, %u\n", __FUNCTION__, lba, SECTORS_PER_PAGE);	
+			printf("ERROR[%s] Exceed Sector number, %u, %u\n", __FUNCTION__, lba, SECTORS_PER_PAGE);
 	}
 
 	return SUCCESS;
 }
 
 static int compressed_cache_flush() {
-	int ret;
-	for (ssize_t i = cache.elements - 1; i >= 0; i--) {
-		int32_t entry_lba = cache.entries[i].lba;
-		if (entry_lba == -1)
-			continue;
-		if(entry_lba + SECTORS_PER_PAGE > SECTOR_NB){
-			printf("ERROR[%s] Exceed Sector number\n", __FUNCTION__);	
-		}
-		ret = _FTL_WRITE_REAL(entry_lba, SECTORS_PER_PAGE);
-		if (ret == FAIL)
-			return ret;
+	int ret = _FTL_WRITE_REAL(cache.entries[0].lba, SECTORS_PER_PAGE, 1);
+	if (ret == FAIL)
+		return ret;
 
-		cache.used -= cache.entries[i].size;
-		cache.entries[i].lba = -1;
-		cache.elements--;
-	}
-	return SUCCESS;
+	compressed_cache_reset();
 }
 
 void FTL_INIT(void)
@@ -378,7 +366,7 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 
 	if(!cache_enable){
-		return _FTL_WRITE_REAL(sector_nb, length);
+		return _FTL_WRITE_REAL(sector_nb, length, 0);
 	}
 
 	if(sector_nb + length > SECTOR_NB){
@@ -430,7 +418,7 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 
 }
 
-int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
+int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length, int cache_flush)
 {
 #ifdef FTL_DEBUG
 	printf("[%s] Start\n", __FUNCTION__);
@@ -443,7 +431,7 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 	int io_page_nb;
 
 	if(sector_nb + length > SECTOR_NB){
-		printf("ERROR[%s] Exceed Sector number: %d, %u\n", __FUNCTION__, sector_nb, length);
+		printf("ERROR[%s] Exceed Sector number: %d, %u, %lu\n", __FUNCTION__, sector_nb, length, SECTOR_NB);
                 return FAIL;
         }
 	else{
@@ -476,7 +464,7 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 		INCREASE_WB_FTL_POINTER(write_sects);
 #endif
 		
-		ret = _FTL_WRITE_PAGE(lba, left_skip, right_skip, write_page_nb, &new_ppn, io_page_nb);
+		ret = _FTL_WRITE_PAGE(lba, left_skip, right_skip, write_page_nb, &new_ppn, io_page_nb, cache_flush);
 		write_page_nb++;
 		lba += write_sects;
 		remain -= write_sects;
@@ -509,7 +497,7 @@ int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length)
 
 static int _FTL_WRITE_PAGE(
 	int32_t lba, unsigned long left_skip, unsigned long right_skip,
-	int write_page_nb, int32_t *new_ppn_ret, int io_page_nb
+	int write_page_nb, int32_t *new_ppn_ret, int io_page_nb, int cache_flush
 ) {
 	int ret;
 	int32_t lpn;
@@ -540,8 +528,16 @@ static int _FTL_WRITE_PAGE(
 		ret = SSD_PAGE_WRITE(CALC_FLASH(new_ppn), CALC_BLOCK(new_ppn), CALC_PAGE(new_ppn), write_page_nb, WRITE, io_page_nb);
 	}
 
-	UPDATE_OLD_PAGE_MAPPING(lpn);
-	UPDATE_NEW_PAGE_MAPPING(lpn, new_ppn);
+    if (!cache_flush) {
+    	UPDATE_OLD_PAGE_MAPPING(lpn);
+    	UPDATE_NEW_PAGE_MAPPING(lpn, new_ppn);
+    } else {
+        for (int i = 0; i < cache.elements; i++) {
+            int lpn = cache.entries[i].lba / (int32_t) SECTORS_PER_PAGE;
+        	UPDATE_OLD_PAGE_MAPPING(lpn);
+        	UPDATE_NEW_PAGE_MAPPING(lpn, new_ppn);
+        }
+    }
 	if (new_ppn_ret)
 		*new_ppn_ret = new_ppn;
 

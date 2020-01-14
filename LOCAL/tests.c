@@ -8,13 +8,15 @@
 								if(SETUP) SSD_TERM()
 
 extern int32_t* mapping_table;
-
+extern double total_write_count;
+extern double total_gc_write_count;
 /**
  * simple test that writes all sectors in the device randomly
  */
 int test_access()
 {
 	int ret, i, lba;
+	size_t written = 0;
 
 	// write entire device 
 	printf("total sectors: %lu sectors per page: %u\n", SECTOR_NB, SECTORS_PER_PAGE);
@@ -25,10 +27,11 @@ int test_access()
 
 		lba = rand() % SECTOR_NB;
 		SSD_WRITE(SECTORS_PER_PAGE, lba);
+		written += SECTORS_PER_PAGE;
 	}
 
-	printf("wrote seq\n");
-
+	printf("wrote seq %lx\n", written);
+	printf("Actual write amplification %.3lf\n", (total_write_count+total_gc_write_count)/(double)written);
 	return 0;
 }
 
