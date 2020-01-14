@@ -26,7 +26,8 @@ int test_access()
 		}
 
 		lba = rand() % SECTOR_NB;
-		lba = i % (SECTOR_NB - SECTORS_PER_PAGE);
+		lba = (lba * SECTORS_PER_PAGE) / SECTORS_PER_PAGE;
+		// lba = i % (SECTOR_NB - SECTORS_PER_PAGE);
 		SSD_WRITE(SECTORS_PER_PAGE, lba);
 		written += 1;
 	}
