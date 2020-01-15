@@ -24,8 +24,8 @@ We measured compression ratio $\alpha$ of 5% to 60% in 5% increments, for $OVP$ 
 | 0.40     |    2.382  |  2.294    | 2              |
 | 0.45     |    2.383  |  2.302    | 2              |
 | 0.50     |    2.386  |  2.309    | 2              |
-| 0.55     |    T/O    |  7.850    | 1              |
-| 0.60     |    T/O    |  7.805    | 1              |
+| 0.55     |   22.865  |  7.850    | 1              |
+| 0.60     |   24.260  |  7.805    | 1              |
 
 
 We can see two key points in the above data:
