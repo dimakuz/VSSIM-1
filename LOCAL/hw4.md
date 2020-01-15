@@ -46,6 +46,15 @@ For $0.35 \le \alpha \le 0.50$ we see slightly smaller WA on $OVP=80$, possibly 
 
 ### b
 
+We ran a workload of sequential reads of 4 pages, to leverage the cache storing 4 pages in one.
+The results show that without cache we preform x2.66 more reads. but the avgerage latency is x10 worse when using cache. it is difficult to explain why. we think it might be related to a counter we couldn't find.
+
+|          | Baseline  | alpha=.25 |
+|----------|----------:|----------:|
+| Total Reads   |    28663   |  10742    |
+| Total Reads Delay |    767750  |  1729858    |
+| Avg Latency   |    166.119 us  |  1059.313 us  |
+
 
 ### c
 
