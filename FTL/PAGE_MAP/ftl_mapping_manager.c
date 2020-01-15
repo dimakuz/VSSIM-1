@@ -32,6 +32,8 @@ void INIT_MAPPING_TABLE(void)
 			mapping_table[i] = -1;
 		}
 	}
+	
+	LOG("allcation PAGE_MAPPING_ENTRY: %lu", PAGE_MAPPING_ENTRY_NB);
 }
 
 void TERM_MAPPING_TABLE(void)

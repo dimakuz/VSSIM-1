@@ -8,22 +8,23 @@
 								if(SETUP) SSD_TERM()
 
 extern int32_t* mapping_table;
-
 /**
  * simple test that writes all sectors in the device randomly
  */
 int test_access()
 {
 	int ret, i, lba;
-
+	srand(100);
 	// write entire device 
-	printf("total sectors: %lu sectors per page: %u\n", SECTOR_NB, SECTORS_PER_PAGE);
-	for(i=0;i<SECTOR_NB;i+=SECTORS_PER_PAGE){
+	printf("total sectors: %lu, ovp: %d, sectors per page: %u\n", SECTOR_NB, OVP,  SECTORS_PER_PAGE);
+	for(i=0;i<SECTOR_NB*2;i+=SECTORS_PER_PAGE){
 		if ((i/SECTORS_PER_PAGE) % 1024*10==0){
 			LOG("wrote %.3lf of device", (double)i  / (double)SECTOR_NB);
 		}
 
-		lba = rand() % SECTOR_NB;
+		//lba = ((i%sectors)/SECTORS_PER_PAGE)*SECTORS_PER_PAGE;
+		lba = ((rand()%SECTOR_NB)/SECTORS_PER_PAGE)*SECTORS_PER_PAGE;
+		//lba = ((rand()%SECTOR_NB)/SECTORS_PER_PAGE)*SECTORS_PER_PAGE;
 		SSD_WRITE(SECTORS_PER_PAGE, lba);
 	}
 
@@ -36,18 +37,31 @@ int test_access()
 /**
  * simple test that writes and re-reads tenth of all sectors in the device randomly
  */
-int test_reread(size_t pages)
+int test_reread()
 {
 	int ret, i, lba;
+	int64_t sect = (SECTOR_NB/10)*7;
 
-	for(i=0;i<SECTOR_NB / 10;i+=SECTORS_PER_PAGE){
+	printf("sects: %ld, total: %ld", sect, SECTOR_NB);
+	for(i=0;i<sect;i+=SECTORS_PER_PAGE){
 		if ((i/SECTORS_PER_PAGE) % 1024*10==0){
-			LOG("wrote %.3lf of device", (double)i  / (double)SECTOR_NB);
+			//LOG("wrote %.3lf of device", (double)i  / (double)SECTOR_NB);
 		}
 
-		size_t pnb = rand() % PAGE_NB;
-		SSD_WRITE(SECTORS_PER_PAGE * pages, pnb * SECTORS_PER_PAGE);
-		SSD_READ(SECTORS_PER_PAGE * pages, pnb * SECTORS_PER_PAGE);
+		lba = ((i%SECTOR_NB)/SECTORS_PER_PAGE)*SECTORS_PER_PAGE;
+		SSD_WRITE(SECTORS_PER_PAGE, lba);
+	}
+
+	LOG("done writing now reading\n");
+	int pnb = 4;
+	for(i=0;i < sect; i+=SECTORS_PER_PAGE*pnb){
+		if ((i/SECTORS_PER_PAGE) % 1024*10==0){
+			//LOG("read %.3lf of device", (double)i  / (double)SECTOR_NB);
+		}
+		lba = (i%SECTOR_NB/(SECTORS_PER_PAGE * pnb))*(SECTORS_PER_PAGE * pnb);
+
+		SSD_READ(SECTORS_PER_PAGE * pnb, lba);
+	
 	}
 	return 0;
 }
@@ -81,6 +95,7 @@ int main(int argc, char *argv[]){
 
 	printf("running test with cache=%u,fixed alpha?=%u alpha=%f, pages=%lu\n",
 		   	cache_enable, controlled_compr_en, controlled_compr_factor, pages);
-	RUN_TEST(setup, test_access());
+	//RUN_TEST(setup, test_access());
+	RUN_TEST(setup, test_reread());
 	return 0;
 }

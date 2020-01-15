@@ -21,11 +21,48 @@ FILE* fp_ftl_r;
 int g_init = 0;
 extern double ssd_util;
 
+int32_t* cache_map;
+int32_t** inverse_cache_map;
+
+int _FTL_READ_REAL(int32_t sector_nb, unsigned int length);
 int _FTL_WRITE_REAL(int32_t sector_nb, unsigned int length);
 static int _FTL_WRITE_PAGE(
 	int32_t lba, unsigned long left_skip, unsigned long right_skip,
 	int write_page_nb, int32_t *new_ppn_ret, int io_page_nb
 );
+
+void INIT_CACHE_MAPPING_TABLE(void);
+
+void INIT_CACHE_MAPPING_TABLE(void)
+{
+	/* Allocation Memory for Mapping Table */
+	cache_map = (int32_t*)calloc(PAGE_MAPPING_ENTRY_NB, sizeof(int32_t));
+	if(cache_map == NULL){
+		printf("ERROR[%s] Calloc cache mapping table fail\n", __FUNCTION__);
+		return;
+	}
+
+	/* Initialization Mapping Table */
+	
+	for(int i=0;i<PAGE_MAPPING_ENTRY_NB;i++){
+		cache_map[i] = -1;
+	}
+	
+	inverse_cache_map = (int32_t**)calloc(PAGE_MAPPING_ENTRY_NB, sizeof(int32_t*));
+	if(inverse_cache_map	== NULL){
+		printf("ERROR[%s] Calloc inverse cache mapping table fail\n", __FUNCTION__);
+		return;
+	}
+
+	/* Initialization Mapping Table */
+	
+	for(int i=0;i<PAGE_MAPPING_ENTRY_NB;i++){
+		inverse_cache_map[i] = NULL;
+	}
+
+	LOG("allcation PAGE_MAPPING_ENTRY: %lu", PAGE_MAPPING_ENTRY_NB);
+	printf("allocated cache maps\n");
+}
 
 int cache_enable = 1;
 struct compressed_cache_entry {
@@ -111,21 +148,36 @@ static int compressed_cache_write(int32_t lba, size_t size) {
 
 static int compressed_cache_flush() {
 	int ret;
-	for (ssize_t i = cache.elements - 1; i >= 0; i--) {
-		int32_t entry_lba = cache.entries[i].lba;
-		if (entry_lba == -1)
-			continue;
-		if(entry_lba + SECTORS_PER_PAGE > SECTOR_NB){
-			printf("ERROR[%s] Exceed Sector number\n", __FUNCTION__);	
-		}
-		ret = _FTL_WRITE_REAL(entry_lba, SECTORS_PER_PAGE);
-		if (ret == FAIL)
-			return ret;
+	//printf("num-elements: %d, %u\n", cache.elements, cache.entries[0].lba);
+	ret = _FTL_WRITE_REAL(cache.entries[0].lba, SECTORS_PER_PAGE);
+	if (ret == FAIL)
+		return ret;
 
-		cache.used -= cache.entries[i].size;
-		cache.entries[i].lba = -1;
-		cache.elements--;
+	int lpn = cache.entries[0].lba/SECTORS_PER_PAGE;
+	if(inverse_cache_map[lpn] == NULL){
+		inverse_cache_map[lpn] = (int32_t*)calloc(_CACHE_ENTRIES, sizeof(int32_t));
+		if(inverse_cache_map[lpn] == NULL){
+			LOG("ERRORORROR");
+		}
+		for(int i=0; i<_CACHE_ENTRIES;i++){
+			inverse_cache_map[lpn][i] = -1;
+		}
+	}else{
+		for(int i=0; i<_CACHE_ENTRIES;i++){
+			if(inverse_cache_map[lpn][i] != -1){
+				cache_map[inverse_cache_map[lpn][i]] = -1;
+				inverse_cache_map[lpn][i] = -1;
+			}
+		}
 	}
+
+	for(int i=0; i<cache.elements; i++){
+		int lpn2 = cache.entries[i].lba/SECTORS_PER_PAGE;
+		cache_map[lpn2] = lpn;
+		inverse_cache_map[lpn][i] = lpn2;
+	}
+	
+	compressed_cache_reset();
 	return SUCCESS;
 }
 
@@ -137,6 +189,7 @@ void FTL_INIT(void)
 		INIT_SSD_CONFIG();
 
 		INIT_MAPPING_TABLE();
+		INIT_CACHE_MAPPING_TABLE();
 		INIT_INVERSE_MAPPING_TABLE();
 		INIT_BLOCK_STATE_TABLE();
 		INIT_VALID_ARRAY();
@@ -255,7 +308,72 @@ void FTL_WRITE(int32_t sector_nb, unsigned int length)
 #endif
 }
 
-int _FTL_READ(int32_t sector_nb, unsigned int length)
+
+int _FTL_READ(int32_t sector_nb, unsigned int length){
+	if(!cache_enable){
+		return _FTL_READ_REAL(sector_nb, length);
+	}
+
+	unsigned int ret = FAIL;
+	int32_t lpn;
+	int32_t ppn;
+	int32_t lba = sector_nb;
+	unsigned int remain = length;
+	unsigned int left_skip = sector_nb % SECTORS_PER_PAGE;
+	unsigned int right_skip;
+	unsigned int read_sects;
+
+	int read_page_nb = 0;
+	int io_page_nb;
+	int32_t cache_lpn = -1;
+	int32_t prev_cache_lpn = -1;
+
+	while(remain > 0){
+
+		if(remain > SECTORS_PER_PAGE - left_skip){
+			right_skip = 0;
+		}
+		else{
+			right_skip = SECTORS_PER_PAGE - left_skip - remain;
+		}
+		read_sects = SECTORS_PER_PAGE - left_skip - right_skip;
+
+
+		//ret = compressed_cache_read(lba);
+		if(ret == FAIL){
+		lpn = lba / (int32_t)SECTORS_PER_PAGE;
+		cache_lpn = cache_map[lpn];
+		//LOG("lpn was: %u, now:%u\n", lpn, cache_lpn);
+		if(lpn == -1){
+			LOG("ERROR[%s] No Cache Mapping info for lpn: %u, lba: %u\n", __FUNCTION__, lpn, lba);
+		}
+
+		if(prev_cache_lpn != cache_lpn && prev_cache_lpn != -1){
+			LOG("doing read for: %u was: %u", prev_cache_lpn, cache_lpn);
+			ret = _FTL_READ_REAL(cache_lpn, SECTORS_PER_PAGE);
+#ifdef FTL_DEBUG
+			if(ret == SUCCESS){
+				printf("\t read complete [%u]\n",ppn);
+			}
+			else if(ret == FAIL){
+				printf("ERROR[%s] %u page read fail \n",__FUNCTION__, ppn);
+			}
+#endif
+
+		}
+		}
+		
+		lba += read_sects;
+		remain -= read_sects;
+		left_skip = 0;
+	}
+
+	//LOG("doing final read for: %u was: %u", prev_cache_lpn, cache_lpn);
+	return _FTL_READ_REAL(cache_lpn, SECTORS_PER_PAGE);
+
+}
+
+int _FTL_READ_REAL(int32_t sector_nb, unsigned int length)
 {
 #ifdef FTL_DEBUG
 	printf("[%s] Start\n", __FUNCTION__);
@@ -323,7 +441,8 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 			right_skip = SECTORS_PER_PAGE - left_skip - remain;
 		}
 		read_sects = SECTORS_PER_PAGE - left_skip - right_skip;
-
+		
+		
 		lpn = lba / (int32_t)SECTORS_PER_PAGE;
 
 #ifdef FTL_MAP_CACHE
@@ -337,8 +456,9 @@ int _FTL_READ(int32_t sector_nb, unsigned int length)
 			printf("ERROR[%s] No Mapping info\n", __FUNCTION__);
 #endif
 		}
-		if (!cache_enable || compressed_cache_read(lba) == FAIL)
-			ret = SSD_PAGE_READ(CALC_FLASH(ppn), CALC_BLOCK(ppn), CALC_PAGE(ppn), read_page_nb, READ, io_page_nb);
+		
+		ret = SSD_PAGE_READ(CALC_FLASH(ppn), CALC_BLOCK(ppn), CALC_PAGE(ppn), read_page_nb, READ, io_page_nb);
+		
 
 #ifdef FTL_DEBUG
 		if(ret == SUCCESS){
@@ -398,7 +518,7 @@ int _FTL_WRITE(int32_t sector_nb, unsigned int length){
 	while(remain > 0){
 		double compr_factor = get_compr_factor();
 		size_t compr_size =  (size_t) PAGE_SIZE * compr_factor;
-		
+
 		if(remain > SECTORS_PER_PAGE - left_skip){
 			right_skip = 0;
 		}
